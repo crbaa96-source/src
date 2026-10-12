@@ -3,52 +3,49 @@ name: Build SnapUnlock IPA
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 
 jobs:
   build:
-    runs-on: macos-14
-
+    runs-on: macos-15
     steps:
-      - name: Checkout
+      - name: Get source code
         uses: actions/checkout@v4
 
-      - name: Install Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Create Capacitor project
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate iOS project
         run: |
-          mkdir build-project
-          cd build-project
-          npm init -y
-          npm install @capacitor/core @capacitor/ios
-          npm install --save-dev @capacitor/cli
-          mkdir www
-          echo '<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>Loading SnapUnlock...</body></html>' > www/index.html
-          npx cap init SnapUnlock com.snapunlock.app --web-dir www
-          node -e "let fs=require('fs');let p=JSON.parse(fs.readFileSync('capacitor.config.json'));p.server={url:'https://snapunlock.eu/app.html',cleartext:false};fs.writeFileSync('capacitor.config.json',JSON.stringify(p,null,2))"
           npx cap add ios
           npx cap sync ios
 
-      - name: Build iOS app
+      - name: Build iOS application
         run: |
-          cd build-project
           xcodebuild \
             -project ios/App/App.xcodeproj \
             -scheme App \
             -configuration Release \
             -sdk iphoneos \
-            -archivePath "$RUNNER_TEMP/SnapUnlock.xcarchive" \
+            -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
-            archive
-          mkdir -p "$RUNNER_TEMP/Payload"
-          cp -R "$RUNNER_TEMP/SnapUnlock.xcarchive/Products/Applications/App.app" "$RUNNER_TEMP/Payload/"
-          cd "$RUNNER_TEMP"
+            build
+
+      - name: Package IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/App.app Payload/
           zip -r SnapUnlock.ipa Payload
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: SnapUnlock-IPA
-          path: /Users/runner/work/_temp/SnapUnlock.ipa
+          path: SnapUnlock.ipa
+          if-no-files-found: error
