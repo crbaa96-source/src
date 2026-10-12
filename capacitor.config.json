@@ -2,7 +2,7 @@
 {
   "appId": "eu.snapunlock.app",
   "appName": "SnapUnlock",
-  "webDir": ".",
+  "webDir": "www",
   "server": {
     "url": "https://snapunlock.eu/app.html",
     "cleartext": false
